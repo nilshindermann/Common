@@ -1,0 +1,52 @@
+// Common gradle stuff for Mods
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
+    }
+
+    withSourcesJar()
+    withJavadocJar()
+}
+
+ext {
+    changelog = { String fileName ->
+        return "I am the Changelog: " + fileName
+    }
+
+    secret = { String key ->
+        File secretFile = file('secrets.properties')
+        if (secretFile.canRead()) {
+            Properties secretProps = new Properties()
+            secretProps.load(new FileInputStream(secretFile))
+            return secretProps.getProperty(key).toString()
+        }
+        return null
+    }
+}
+
+// publishing on NEXUS
+publishing {
+    publications { PublicationContainer publicationContainer ->
+        publicationContainer.register("maven", MavenPublication) { MavenPublication publication ->
+            publication.artifacts = [jar, sourcesJar, javadocJar]
+            publication.version = "$project.version"
+            publication.artifactId = "$project.archivesBaseName"
+        }
+    }
+
+    repositories {
+        maven {
+            credentials {
+                username = secret('nexus_uname')
+                password = secret('nexus_pwd')
+            }
+
+            if (project.version.endsWith('-SNAPSHOT')) {
+                url 'https://nexus.themcbrothers.net/repository/maven-snapshots/'
+            } else {
+                url 'https://nexus.themcbrothers.net/repository/maven-releases/'
+            }
+        }
+    }
+}
